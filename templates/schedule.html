@@ -1,0 +1,18 @@
+{{range .}}
+<div class="schedule-item">
+    <h3>{{.Title}}</h3>
+    {{if .Description}}<p>{{.Description}}</p>{{end}}
+    <p class="time">📍 {{.StartTime.Format "Jan 2, 2006 3:04 PM"}} - {{.EndTime.Format "3:04 PM"}}</p>
+    <button class="remove-btn" 
+            hx-delete="/api/schedule/{{.ID}}" 
+            hx-target="#schedule-list"
+            hx-swap="innerHTML"
+            hx-confirm="Are you sure you want to remove this event?">
+        Remove
+    </button>
+</div>
+{{else}}
+<div class="empty-state">
+    No events scheduled yet. You're first in line!
+</div>
+{{end}}
