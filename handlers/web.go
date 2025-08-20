@@ -13,11 +13,22 @@ import (
 	"laundry-scheduler/models"
 )
 
+const (
+	// DefaultPort is the default server port
+	DefaultPort = ":8080"
+	// TemplatesDir is the directory containing HTML templates
+	TemplatesDir = "templates"
+	// StaticDir is the directory containing static files
+	StaticDir = "./static"
+)
+
+// WebHandler handles HTTP requests for the laundry queue application
 type WebHandler struct {
 	queue     *models.LaundryQueue
 	templates *template.Template
 }
 
+// NewWebHandler creates a new web handler with initialized templates
 func NewWebHandler(queue *models.LaundryQueue) *WebHandler {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -25,7 +36,6 @@ func NewWebHandler(queue *models.LaundryQueue) *WebHandler {
 	}
 	log.Printf("Working directory: %s", wd)
 
-	// Custom template functions
 	funcMap := template.FuncMap{
 		"formatTime": func(t *time.Time) string {
 			if t == nil {
@@ -61,10 +71,10 @@ func NewWebHandler(queue *models.LaundryQueue) *WebHandler {
 		},
 	}
 
-	templatePath := filepath.Join("templates", "*.html")
+	templatePath := filepath.Join(TemplatesDir, "*.html")
 	log.Printf("Looking for templates at: %s", templatePath)
 
-	if _, err := os.Stat("templates"); os.IsNotExist(err) {
+	if _, err := os.Stat(TemplatesDir); os.IsNotExist(err) {
 		log.Fatal("templates directory not found! Make sure you're running from the project root directory")
 	}
 
@@ -81,6 +91,7 @@ func NewWebHandler(queue *models.LaundryQueue) *WebHandler {
 	}
 }
 
+// Index serves the main page
 func (h *WebHandler) Index(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		HasActiveLoad bool
@@ -98,20 +109,19 @@ func (h *WebHandler) Index(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetQueue returns the current queue as HTML
 func (h *WebHandler) GetQueue(w http.ResponseWriter, r *http.Request) {
 	items := h.queue.GetAll()
 
-	// Calculate positions for all waiting items
 	positions := make(map[string]int)
 	waitingCount := 0
 	for _, item := range items {
-		if item.Status == "waiting" {
+		if item.Status == models.StatusWaiting {
 			waitingCount++
 			positions[item.ID] = waitingCount
 		}
 	}
 
-	// Create a struct with items and positions map
 	data := struct {
 		Items     []*models.QueueItem
 		Positions map[string]int
@@ -128,6 +138,7 @@ func (h *WebHandler) GetQueue(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetForm returns the form HTML based on queue state
 func (h *WebHandler) GetForm(w http.ResponseWriter, r *http.Request) {
 	hasQueueItems := h.queue.HasQueueItems()
 
@@ -139,6 +150,7 @@ func (h *WebHandler) GetForm(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// AddToQueue handles adding a new person to the queue
 func (h *WebHandler) AddToQueue(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -171,12 +183,9 @@ func (h *WebHandler) AddToQueue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if there are any items in the queue
 	if h.queue.HasQueueItems() {
-		// Just add to queue without starting
 		h.queue.AddToQueue(name, numLoads)
 	} else {
-		// No items in queue, start immediately if duration provided
 		if durationStr != "" {
 			duration, err := strconv.Atoi(durationStr)
 			if err != nil || duration <= 0 {
@@ -185,21 +194,18 @@ func (h *WebHandler) AddToQueue(w http.ResponseWriter, r *http.Request) {
 			}
 			h.queue.AddAndStart(name, duration, numLoads)
 		} else {
-			// Just queue if no duration
 			h.queue.AddToQueue(name, numLoads)
 		}
 	}
 
-	// Return updated queue only
 	w.Header().Set("Content-Type", "text/html")
 
 	items := h.queue.GetAll()
 
-	// Calculate positions
 	positions := make(map[string]int)
 	waitingCount := 0
 	for _, item := range items {
-		if item.Status == "waiting" {
+		if item.Status == models.StatusWaiting {
 			waitingCount++
 			positions[item.ID] = waitingCount
 		}
@@ -215,6 +221,7 @@ func (h *WebHandler) AddToQueue(w http.ResponseWriter, r *http.Request) {
 	h.templates.ExecuteTemplate(w, "queue.html", data)
 }
 
+// StartTimer starts the timer for a queued person
 func (h *WebHandler) StartTimer(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -243,14 +250,12 @@ func (h *WebHandler) StartTimer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Return updated queue
 	items := h.queue.GetAll()
 
-	// Calculate positions
 	positions := make(map[string]int)
 	waitingCount := 0
 	for _, item := range items {
-		if item.Status == "waiting" {
+		if item.Status == models.StatusWaiting {
 			waitingCount++
 			positions[item.ID] = waitingCount
 		}
@@ -272,6 +277,7 @@ func (h *WebHandler) StartTimer(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// RemoveFromQueue removes a person from the queue
 func (h *WebHandler) RemoveFromQueue(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -292,14 +298,12 @@ func (h *WebHandler) RemoveFromQueue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Return updated queue
 	items := h.queue.GetAll()
 
-	// Calculate positions
 	positions := make(map[string]int)
 	waitingCount := 0
 	for _, item := range items {
-		if item.Status == "waiting" {
+		if item.Status == models.StatusWaiting {
 			waitingCount++
 			positions[item.ID] = waitingCount
 		}

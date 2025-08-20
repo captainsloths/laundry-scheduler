@@ -5,14 +5,28 @@ import (
 	"time"
 )
 
+const (
+	// StatusWaiting indicates a queue item is waiting to start
+	StatusWaiting = "waiting"
+	// StatusInProgress indicates a queue item is currently running
+	StatusInProgress = "in_progress"
+	// StatusCompleted indicates a queue item has finished
+	StatusCompleted = "completed"
+	
+	// AutoRemoveDelay is how long completed items stay before auto-removal
+	AutoRemoveDelay = 5 * time.Minute
+	// BackgroundWorkerInterval is how often the background worker runs
+	BackgroundWorkerInterval = 30 * time.Second
+)
+
 // QueueItem represents a person in the laundry queue
 type QueueItem struct {
 	ID          string     `json:"id"`
 	Name        string     `json:"name"`
-	Status      string     `json:"status"` // "waiting", "in_progress", "completed"
+	Status      string     `json:"status"`
 	StartTime   *time.Time `json:"start_time,omitempty"`
-	Duration    int        `json:"duration,omitempty"` // Duration in minutes
-	NumLoads    int        `json:"num_loads"`          // Number of loads to wash
+	Duration    int        `json:"duration,omitempty"`
+	NumLoads    int        `json:"num_loads"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
 	QueuedAt    time.Time  `json:"queued_at"`
 }
@@ -28,7 +42,7 @@ func (q *QueueItem) GetEndTime() *time.Time {
 
 // IsTimerExpired checks if the timer has expired
 func (q *QueueItem) IsTimerExpired() bool {
-	if q.Status != "in_progress" || q.StartTime == nil {
+	if q.Status != StatusInProgress || q.StartTime == nil {
 		return false
 	}
 	endTime := q.GetEndTime()
@@ -37,7 +51,7 @@ func (q *QueueItem) IsTimerExpired() bool {
 
 // GetRemainingMinutes returns how many minutes are left
 func (q *QueueItem) GetRemainingMinutes() int {
-	if q.Status != "in_progress" || q.StartTime == nil {
+	if q.Status != StatusInProgress || q.StartTime == nil {
 		return 0
 	}
 	endTime := q.GetEndTime()
@@ -51,12 +65,12 @@ func (q *QueueItem) GetRemainingMinutes() int {
 	return int(remaining)
 }
 
-// ShouldAutoRemove checks if completed item should be removed (after 5 minutes)
+// ShouldAutoRemove checks if completed item should be removed
 func (q *QueueItem) ShouldAutoRemove() bool {
-	if q.Status != "completed" || q.CompletedAt == nil {
+	if q.Status != StatusCompleted || q.CompletedAt == nil {
 		return false
 	}
-	return time.Since(*q.CompletedAt) > 5*time.Minute
+	return time.Since(*q.CompletedAt) > AutoRemoveDelay
 }
 
 // LaundryQueue manages the queue
@@ -70,38 +84,29 @@ func NewLaundryQueue() *LaundryQueue {
 	queue := &LaundryQueue{
 		items: make([]*QueueItem, 0),
 	}
-
-	// Start background worker for status updates
 	go queue.backgroundWorker()
-
 	return queue
 }
 
-// backgroundWorker updates statuses and removes old completed items
 func (q *LaundryQueue) backgroundWorker() {
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(BackgroundWorkerInterval)
 	defer ticker.Stop()
 
 	for range ticker.C {
 		q.mu.Lock()
-
-		// Update statuses and remove old completed items
 		newItems := make([]*QueueItem, 0)
 		for _, item := range q.items {
-			// Check if timer expired
-			if item.Status == "in_progress" && item.IsTimerExpired() {
-				item.Status = "completed"
+			if item.Status == StatusInProgress && item.IsTimerExpired() {
+				item.Status = StatusCompleted
 				now := time.Now()
 				item.CompletedAt = &now
 			}
 
-			// Keep item if it shouldn't be auto-removed
 			if !item.ShouldAutoRemove() {
 				newItems = append(newItems, item)
 			}
 		}
 		q.items = newItems
-
 		q.mu.Unlock()
 	}
 }
@@ -114,11 +119,10 @@ func (q *LaundryQueue) AddToQueue(name string, numLoads int) *QueueItem {
 	item := &QueueItem{
 		ID:       time.Now().Format("20060102150405") + "-" + name,
 		Name:     name,
-		Status:   "waiting",
+		Status:   StatusWaiting,
 		NumLoads: numLoads,
 		QueuedAt: time.Now(),
 	}
-
 	q.items = append(q.items, item)
 	return item
 }
@@ -129,11 +133,11 @@ func (q *LaundryQueue) StartTimer(id string, duration int) bool {
 	defer q.mu.Unlock()
 
 	for _, item := range q.items {
-		if item.ID == id && item.Status == "waiting" {
+		if item.ID == id && item.Status == StatusWaiting {
 			now := time.Now()
 			item.StartTime = &now
 			item.Duration = duration
-			item.Status = "in_progress"
+			item.Status = StatusInProgress
 			return true
 		}
 	}
@@ -149,13 +153,12 @@ func (q *LaundryQueue) AddAndStart(name string, duration int, numLoads int) *Que
 	item := &QueueItem{
 		ID:        time.Now().Format("20060102150405") + "-" + name,
 		Name:      name,
-		Status:    "in_progress",
+		Status:    StatusInProgress,
 		StartTime: &now,
 		Duration:  duration,
 		NumLoads:  numLoads,
 		QueuedAt:  now,
 	}
-
 	q.items = append(q.items, item)
 	return item
 }
@@ -165,10 +168,9 @@ func (q *LaundryQueue) GetAll() []*QueueItem {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	// Update statuses before returning
 	for _, item := range q.items {
-		if item.Status == "in_progress" && item.IsTimerExpired() {
-			item.Status = "completed"
+		if item.Status == StatusInProgress && item.IsTimerExpired() {
+			item.Status = StatusCompleted
 			if item.CompletedAt == nil {
 				now := time.Now()
 				item.CompletedAt = &now
@@ -176,7 +178,6 @@ func (q *LaundryQueue) GetAll() []*QueueItem {
 		}
 	}
 
-	// Remove items that should be auto-removed
 	newItems := make([]*QueueItem, 0)
 	for _, item := range q.items {
 		if !item.ShouldAutoRemove() {
@@ -185,7 +186,6 @@ func (q *LaundryQueue) GetAll() []*QueueItem {
 	}
 	q.items = newItems
 
-	// Return a copy
 	result := make([]*QueueItem, len(q.items))
 	copy(result, q.items)
 	return result
@@ -197,7 +197,7 @@ func (q *LaundryQueue) HasActiveLoad() bool {
 	defer q.mu.RUnlock()
 
 	for _, item := range q.items {
-		if item.Status == "in_progress" && !item.IsTimerExpired() {
+		if item.Status == StatusInProgress && !item.IsTimerExpired() {
 			return true
 		}
 	}
@@ -210,7 +210,7 @@ func (q *LaundryQueue) HasQueueItems() bool {
 	defer q.mu.RUnlock()
 
 	for _, item := range q.items {
-		if item.Status == "waiting" || (item.Status == "in_progress" && !item.IsTimerExpired()) {
+		if item.Status == StatusWaiting || (item.Status == StatusInProgress && !item.IsTimerExpired()) {
 			return true
 		}
 	}
@@ -224,7 +224,7 @@ func (q *LaundryQueue) GetQueuePosition(id string) int {
 
 	position := 0
 	for _, item := range q.items {
-		if item.Status == "waiting" {
+		if item.Status == StatusWaiting {
 			position++
 			if item.ID == id {
 				return position
