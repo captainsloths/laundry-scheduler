@@ -12,6 +12,7 @@ on:
       - 'models/**'
       - 'static/**'
       - 'templates/**'
+      - '.github/workflows/**'
       - '!README.md'
       - '!**/*.md'
       - '!docs/**'
