@@ -1,0 +1,71 @@
+<h2>{{if .}}Join the Queue{{else}}Start Your Laundry{{end}}</h2>
+
+{{if .}}
+<!-- Someone is using the machine -->
+<div class="info-message">
+    <strong>Machine in use</strong><br>
+    Join the queue now and start your timer when it's your turn.
+</div>
+<form hx-post="/api/queue/add" 
+      hx-target="#queue-list" 
+      hx-swap="innerHTML"
+      hx-on::after-request="this.reset()">
+    <div class="form-group">
+        <label for="name">Your Name</label>
+        <input type="text" id="name" name="name" placeholder="Enter your name" required autofocus>
+    </div>
+    <div class="form-group">
+        <label for="num_loads">Number of Loads</label>
+        <input type="number" id="num_loads" name="num_loads" min="1" max="10" placeholder="e.g., 2" required>
+        <small style="color: hsl(0 0% 45%); display: block; margin-top: 0.25rem; font-size: 0.75rem;">
+            How many loads are you planning to wash?
+        </small>
+    </div>
+    <button type="submit" class="queue-btn">Join Queue</button>
+</form>
+{{else}}
+<!-- Machine is available -->
+<div class="success-message">
+    <strong>Machine available!</strong><br>
+    Start your laundry timer now.
+</div>
+<form hx-post="/api/queue/add" 
+      hx-target="#queue-list" 
+      hx-swap="innerHTML"
+      hx-on::after-request="this.reset()">
+    <div class="form-group">
+        <label for="name">Your Name</label>
+        <input type="text" id="name" name="name" placeholder="Enter your name" required autofocus>
+    </div>
+    <div class="form-group">
+        <label for="num_loads">Number of Loads</label>
+        <input type="number" id="num_loads" name="num_loads" min="1" max="10" placeholder="e.g., 2" required>
+        <small style="color: hsl(0 0% 45%); display: block; margin-top: 0.25rem; font-size: 0.75rem;">
+            How many loads are you planning to wash?
+        </small>
+    </div>
+    <div class="form-group">
+        <label for="duration">Timer Duration (minutes)</label>
+        <input type="number" id="duration" name="duration" min="1" max="180" placeholder="e.g., 45" required>
+        <small style="color: hsl(0 0% 45%); display: block; margin-top: 0.25rem; font-size: 0.75rem;">
+            Typical: Wash 30-45 min, Dry 45-60 min
+        </small>
+    </div>
+    <button type="submit">Start Laundry Timer</button>
+</form>
+{{end}}
+
+    <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid hsl(214.3 31.8% 91.4%);">
+    <h3 style="font-size: 0.875rem; color: hsl(215 20% 65%); margin-bottom: 0.75rem; font-weight: 600;">How it works</h3>
+    <ul style="color: hsl(215 20% 65%); font-size: 0.75rem; padding-left: 1.25rem; line-height: 1.6;">
+        {{if .}}
+        <li>Join the queue to reserve your spot</li>
+        <li>Start your timer when it's your turn</li>
+        <li>Get notified when time is up</li>
+        {{else}}
+        <li>Enter your name, number of loads, and duration</li>
+        <li>Timer starts immediately</li>
+        <li>You'll be notified when complete</li>
+        {{end}}
+    </ul>
+</div>

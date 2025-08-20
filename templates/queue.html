@@ -1,0 +1,73 @@
+{{range .Items}}
+<div class="queue-item {{if eq .Status "completed"}}item-completed{{else if eq .Status "in_progress"}}item-active{{else}}item-waiting{{end}}">
+    <div class="item-header">
+        <div class="header-left">
+            <h3>{{.Name}}</h3>
+            <span class="loads-info">{{.NumLoads}} load{{if ne .NumLoads 1}}s{{end}} planned</span>
+        </div>
+        <span class="status-badge status-{{.Status}}">
+            {{if eq .Status "waiting"}}
+                Waiting
+            {{else if eq .Status "in_progress"}}
+                {{if eq .GetRemainingMinutes 0}}
+                    Timer Expired!
+                {{else}}
+                    In Progress
+                {{end}}
+            {{else if eq .Status "completed"}}
+                Done (removing soon)
+            {{end}}
+        </span>
+    </div>
+    
+    {{if eq .Status "waiting"}}
+        {{if not .StartTime}}
+        <div class="start-timer-form">
+            <form hx-post="/api/queue/start/{{.ID}}" 
+                  hx-target="#queue-list" 
+                  hx-swap="innerHTML">
+                <input type="number" name="duration" min="1" placeholder="Minutes" required>
+                <button type="submit" class="start-btn">Start Timer</button>
+            </form>
+        </div>
+        {{end}}
+        {{$pos := index $.Positions .ID}}
+        {{if $pos}}
+        <p class="queue-info">Position in queue: #{{$pos}}</p>
+        {{end}}
+    {{else if eq .Status "in_progress"}}
+        <p class="timer-info">
+            Started: {{formatTime .StartTime}}<br>
+            Duration: {{formatDuration .Duration}}<br>
+            <strong>{{getRemainingTime .}}</strong>
+        </p>
+    {{else if eq .Status "completed"}}
+        <p class="completed-info">
+            Completed at: {{formatTime .CompletedAt}}<br>
+            <em>Auto-removing in a few minutes...</em>
+        </p>
+    {{end}}
+    
+    {{if ne .Status "completed"}}
+    <button class="remove-btn" 
+            hx-delete="/api/queue/{{.ID}}" 
+            hx-target="#queue-list"
+            hx-swap="innerHTML"
+            hx-confirm="Remove {{.Name}} from the queue?">
+        Leave Queue
+    </button>
+    {{end}}
+</div>
+{{else}}
+<div class="empty-state">
+    No one in the queue. The washing machine is available!
+</div>
+{{end}}
+
+<script>
+    // Trigger event to update the form when queue changes
+    htmx.trigger(document.getElementById('queue-list'), 'queueUpdated');
+    
+    // Also directly refresh the form to ensure it updates
+    htmx.ajax('GET', '/api/form', {target: '#form-container', swap: 'innerHTML'});
+</script>

@@ -3,33 +3,43 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 
 	"laundry-scheduler/handlers"
 	"laundry-scheduler/models"
 )
 
 func main() {
-	// Initialize the store
-	store := models.NewScheduleStore()
+	wd, _ := os.Getwd()
+	log.Printf("Starting server from directory: %s", wd)
 
-	// Create handlers with store
-	webHandler := handlers.NewWebHandler(store)
-	apiHandler := handlers.NewAPIHandler(store)
+	// Initialize the laundry queue
+	queue := models.NewLaundryQueue()
+
+	// Create handlers
+	webHandler := handlers.NewWebHandler(queue)
 
 	// Routes
 	http.HandleFunc("/", webHandler.Index)
-	http.HandleFunc("/api/schedule", webHandler.GetSchedule)
-	http.HandleFunc("/api/schedule/add", webHandler.AddSchedule)
-	http.HandleFunc("/api/schedule/", webHandler.RemoveSchedule)
+	http.HandleFunc("/api/queue", webHandler.GetQueue)
+	http.HandleFunc("/api/form", webHandler.GetForm)
+	http.HandleFunc("/api/queue/add", webHandler.AddToQueue)
+	http.HandleFunc("/api/queue/start/", webHandler.StartTimer)
+	http.HandleFunc("/api/queue/", webHandler.RemoveFromQueue)
 
-	// JSON API endpoints
-	http.HandleFunc("/api/json/schedule", apiHandler.GetSchedule)
-	http.HandleFunc("/api/json/schedule/add", apiHandler.AddSchedule)
-
-	// Serve static files (optional)
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+	// Serve static files
+	staticDir := "./static"
+	if _, err := os.Stat(staticDir); os.IsNotExist(err) {
+		log.Printf("Warning: static directory not found at %s", staticDir)
+	}
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(staticDir))))
 
 	port := ":8080"
 	log.Printf("Server starting on http://localhost%s", port)
+	log.Printf("Make sure you have the following structure:")
+	log.Printf("  - templates/index.html")
+	log.Printf("  - templates/form.html")
+	log.Printf("  - templates/queue.html")
+	log.Printf("  - static/style.css")
 	log.Fatal(http.ListenAndServe(port, nil))
 }
