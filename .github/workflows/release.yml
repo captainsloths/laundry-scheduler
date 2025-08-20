@@ -1,0 +1,73 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.24'
+
+    - name: Build for multiple platforms
+      run: |
+        # Create dist directory
+        mkdir -p dist
+        
+        # Build for different platforms
+        GOOS=linux GOARCH=amd64 go build -o dist/laundry-scheduler-linux-amd64 main.go
+        GOOS=linux GOARCH=arm64 go build -o dist/laundry-scheduler-linux-arm64 main.go
+        GOOS=darwin GOARCH=amd64 go build -o dist/laundry-scheduler-darwin-amd64 main.go
+        GOOS=darwin GOARCH=arm64 go build -o dist/laundry-scheduler-darwin-arm64 main.go
+        GOOS=windows GOARCH=amd64 go build -o dist/laundry-scheduler-windows-amd64.exe main.go
+        GOOS=windows GOARCH=arm64 go build -o dist/laundry-scheduler-windows-arm64.exe main.go
+
+    - name: Create release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          dist/laundry-scheduler-linux-amd64
+          dist/laundry-scheduler-linux-arm64
+          dist/laundry-scheduler-darwin-amd64
+          dist/laundry-scheduler-darwin-arm64
+          dist/laundry-scheduler-windows-amd64.exe
+          dist/laundry-scheduler-windows-arm64.exe
+        tag_name: v${{ github.run_number }}
+        name: Release v${{ github.run_number }}
+        body: |
+          ## Laundry Queue Manager v${{ github.run_number }}
+          
+          ### What's New
+          - Automated release build
+          - Multi-platform support
+          
+          ### Downloads
+          - **Linux (AMD64)**: `laundry-scheduler-linux-amd64`
+          - **Linux (ARM64)**: `laundry-scheduler-linux-arm64`
+          - **macOS (Intel)**: `laundry-scheduler-darwin-amd64`
+          - **macOS (Apple Silicon)**: `laundry-scheduler-darwin-arm64`
+          - **Windows (AMD64)**: `laundry-scheduler-windows-amd64.exe`
+          - **Windows (ARM64)**: `laundry-scheduler-windows-arm64.exe`
+          
+          ### Usage
+          ```bash
+          # Make executable (Linux/macOS)
+          chmod +x laundry-scheduler-linux-amd64
+          
+          # Run the application
+          ./laundry-scheduler-linux-amd64
+          ```
+          
+          The application will be available at http://localhost:8080
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
