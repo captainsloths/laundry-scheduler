@@ -30,12 +30,6 @@ type WebHandler struct {
 
 // NewWebHandler creates a new web handler with initialized templates
 func NewWebHandler(queue *models.LaundryQueue) *WebHandler {
-	wd, err := os.Getwd()
-	if err != nil {
-		log.Printf("Error getting working directory: %v", err)
-	}
-	log.Printf("Working directory: %s", wd)
-
 	funcMap := template.FuncMap{
 		"formatTime": func(t *time.Time) string {
 			if t == nil {
@@ -72,7 +66,6 @@ func NewWebHandler(queue *models.LaundryQueue) *WebHandler {
 	}
 
 	templatePath := filepath.Join(TemplatesDir, "*.html")
-	log.Printf("Looking for templates at: %s", templatePath)
 
 	if _, err := os.Stat(TemplatesDir); os.IsNotExist(err) {
 		log.Fatal("templates directory not found! Make sure you're running from the project root directory")
@@ -83,34 +76,24 @@ func NewWebHandler(queue *models.LaundryQueue) *WebHandler {
 		log.Fatalf("Error parsing templates: %v", err)
 	}
 
-	log.Printf("Templates loaded successfully")
-
 	return &WebHandler{
 		queue:     queue,
 		templates: tmpl,
 	}
 }
 
-// Index serves the main page
-func (h *WebHandler) Index(w http.ResponseWriter, r *http.Request) {
-	data := struct {
-		HasActiveLoad bool
-		Items         []*models.QueueItem
-	}{
-		HasActiveLoad: h.queue.HasActiveLoad(),
-		Items:         h.queue.GetAll(),
-	}
-
+// executeTemplate executes a template with common error handling
+func (h *WebHandler) executeTemplate(w http.ResponseWriter, templateName string, data interface{}) {
 	w.Header().Set("Content-Type", "text/html")
-	err := h.templates.ExecuteTemplate(w, "index.html", data)
+	err := h.templates.ExecuteTemplate(w, templateName, data)
 	if err != nil {
 		log.Printf("Template execution error: %v", err)
 		http.Error(w, fmt.Sprintf("Template error: %v", err), http.StatusInternalServerError)
 	}
 }
 
-// GetQueue returns the current queue as HTML
-func (h *WebHandler) GetQueue(w http.ResponseWriter, r *http.Request) {
+// renderQueue renders the queue with positions calculated
+func (h *WebHandler) renderQueue(w http.ResponseWriter, templateName string) {
 	items := h.queue.GetAll()
 
 	positions := make(map[string]int)
@@ -130,24 +113,31 @@ func (h *WebHandler) GetQueue(w http.ResponseWriter, r *http.Request) {
 		Positions: positions,
 	}
 
-	w.Header().Set("Content-Type", "text/html")
-	err := h.templates.ExecuteTemplate(w, "queue.html", data)
-	if err != nil {
-		log.Printf("Template execution error: %v", err)
-		http.Error(w, fmt.Sprintf("Template error: %v", err), http.StatusInternalServerError)
+	h.executeTemplate(w, templateName, data)
+}
+
+// Index serves the main page
+func (h *WebHandler) Index(w http.ResponseWriter, r *http.Request) {
+	data := struct {
+		HasActiveLoad bool
+		Items         []*models.QueueItem
+	}{
+		HasActiveLoad: h.queue.HasActiveLoad(),
+		Items:         h.queue.GetAll(),
 	}
+
+	h.executeTemplate(w, "index.html", data)
+}
+
+// GetQueue returns the current queue as HTML
+func (h *WebHandler) GetQueue(w http.ResponseWriter, r *http.Request) {
+	h.renderQueue(w, "queue.html")
 }
 
 // GetForm returns the form HTML based on queue state
 func (h *WebHandler) GetForm(w http.ResponseWriter, r *http.Request) {
 	hasQueueItems := h.queue.HasQueueItems()
-
-	w.Header().Set("Content-Type", "text/html")
-	err := h.templates.ExecuteTemplate(w, "form.html", hasQueueItems)
-	if err != nil {
-		log.Printf("Template execution error: %v", err)
-		http.Error(w, fmt.Sprintf("Template error: %v", err), http.StatusInternalServerError)
-	}
+	h.executeTemplate(w, "form.html", hasQueueItems)
 }
 
 // AddToQueue handles adding a new person to the queue
@@ -198,27 +188,7 @@ func (h *WebHandler) AddToQueue(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Content-Type", "text/html")
-
-	items := h.queue.GetAll()
-
-	positions := make(map[string]int)
-	waitingCount := 0
-	for _, item := range items {
-		if item.Status == models.StatusWaiting {
-			waitingCount++
-			positions[item.ID] = waitingCount
-		}
-	}
-
-	data := struct {
-		Items     []*models.QueueItem
-		Positions map[string]int
-	}{
-		Items:     items,
-		Positions: positions,
-	}
-	h.templates.ExecuteTemplate(w, "queue.html", data)
+	h.renderQueue(w, "queue.html")
 }
 
 // StartTimer starts the timer for a queued person
@@ -250,31 +220,7 @@ func (h *WebHandler) StartTimer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items := h.queue.GetAll()
-
-	positions := make(map[string]int)
-	waitingCount := 0
-	for _, item := range items {
-		if item.Status == models.StatusWaiting {
-			waitingCount++
-			positions[item.ID] = waitingCount
-		}
-	}
-
-	data := struct {
-		Items     []*models.QueueItem
-		Positions map[string]int
-	}{
-		Items:     items,
-		Positions: positions,
-	}
-
-	w.Header().Set("Content-Type", "text/html")
-	err = h.templates.ExecuteTemplate(w, "queue.html", data)
-	if err != nil {
-		log.Printf("Template execution error: %v", err)
-		http.Error(w, fmt.Sprintf("Template error: %v", err), http.StatusInternalServerError)
-	}
+	h.renderQueue(w, "queue.html")
 }
 
 // RemoveFromQueue removes a person from the queue
@@ -298,29 +244,5 @@ func (h *WebHandler) RemoveFromQueue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items := h.queue.GetAll()
-
-	positions := make(map[string]int)
-	waitingCount := 0
-	for _, item := range items {
-		if item.Status == models.StatusWaiting {
-			waitingCount++
-			positions[item.ID] = waitingCount
-		}
-	}
-
-	data := struct {
-		Items     []*models.QueueItem
-		Positions map[string]int
-	}{
-		Items:     items,
-		Positions: positions,
-	}
-
-	w.Header().Set("Content-Type", "text/html")
-	err := h.templates.ExecuteTemplate(w, "queue.html", data)
-	if err != nil {
-		log.Printf("Template execution error: %v", err)
-		http.Error(w, fmt.Sprintf("Template error: %v", err), http.StatusInternalServerError)
-	}
+	h.renderQueue(w, "queue.html")
 }

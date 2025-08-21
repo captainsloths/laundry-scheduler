@@ -12,7 +12,7 @@ const (
 	StatusInProgress = "in_progress"
 	// StatusCompleted indicates a queue item has finished
 	StatusCompleted = "completed"
-	
+
 	// AutoRemoveDelay is how long completed items stay before auto-removal
 	AutoRemoveDelay = 5 * time.Minute
 	// BackgroundWorkerInterval is how often the background worker runs
@@ -111,13 +111,18 @@ func (q *LaundryQueue) backgroundWorker() {
 	}
 }
 
+// generateID creates a unique ID for queue items
+func (q *LaundryQueue) generateID(name string) string {
+	return time.Now().Format("20060102150405") + "-" + name
+}
+
 // AddToQueue adds a new person to the queue
 func (q *LaundryQueue) AddToQueue(name string, numLoads int) *QueueItem {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	item := &QueueItem{
-		ID:       time.Now().Format("20060102150405") + "-" + name,
+		ID:       q.generateID(name),
 		Name:     name,
 		Status:   StatusWaiting,
 		NumLoads: numLoads,
@@ -151,7 +156,7 @@ func (q *LaundryQueue) AddAndStart(name string, duration int, numLoads int) *Que
 
 	now := time.Now()
 	item := &QueueItem{
-		ID:        time.Now().Format("20060102150405") + "-" + name,
+		ID:        q.generateID(name),
 		Name:      name,
 		Status:    StatusInProgress,
 		StartTime: &now,
@@ -165,26 +170,8 @@ func (q *LaundryQueue) AddAndStart(name string, duration int, numLoads int) *Que
 
 // GetAll returns all queue items
 func (q *LaundryQueue) GetAll() []*QueueItem {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-
-	for _, item := range q.items {
-		if item.Status == StatusInProgress && item.IsTimerExpired() {
-			item.Status = StatusCompleted
-			if item.CompletedAt == nil {
-				now := time.Now()
-				item.CompletedAt = &now
-			}
-		}
-	}
-
-	newItems := make([]*QueueItem, 0)
-	for _, item := range q.items {
-		if !item.ShouldAutoRemove() {
-			newItems = append(newItems, item)
-		}
-	}
-	q.items = newItems
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 
 	result := make([]*QueueItem, len(q.items))
 	copy(result, q.items)
