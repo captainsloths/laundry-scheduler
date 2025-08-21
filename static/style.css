@@ -203,23 +203,13 @@ button:active {
 }
 
 .item-active {
-    background: hsl(210 40% 98%);
-    border-left: 3px solid hsl(222.2 84% 4.9%);
-    animation: pulse 3s infinite;
+    background: var(--bg-secondary);
+    border-left: 3px solid var(--text-primary);
 }
 
 .item-completed {
-    background: hsl(120 40% 98%);
+    background: var(--bg-secondary);
     border-left: 3px solid hsl(120 50% 50%);
-}
-
-@keyframes pulse {
-    0%, 100% {
-        background: hsl(210 40% 98%);
-    }
-    50% {
-        background: hsl(210 40% 95%);
-    }
 }
 
 .item-header {
@@ -251,13 +241,13 @@ button:active {
 }
 
 .status-waiting {
-    background: hsl(215 20% 90%);
-    color: hsl(215 20% 40%);
+    background: var(--border-color);
+    color: var(--text-secondary);
 }
 
-.status-active {
-    background: hsl(210 40% 90%);
-    color: hsl(222.2 84% 4.9%);
+.status-in_progress {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
 }
 
 .status-completed {

@@ -31,38 +31,22 @@ type QueueItem struct {
 	QueuedAt    time.Time  `json:"queued_at"`
 }
 
-// GetEndTime calculates when the laundry will be done
-func (q *QueueItem) GetEndTime() *time.Time {
-	if q.StartTime == nil || q.Duration == 0 {
-		return nil
-	}
-	endTime := q.StartTime.Add(time.Duration(q.Duration) * time.Minute)
-	return &endTime
-}
-
-// IsTimerExpired checks if the timer has expired
-func (q *QueueItem) IsTimerExpired() bool {
-	if q.Status != StatusInProgress || q.StartTime == nil {
-		return false
-	}
-	endTime := q.GetEndTime()
-	return endTime != nil && time.Now().After(*endTime)
-}
-
 // GetRemainingMinutes returns how many minutes are left
 func (q *QueueItem) GetRemainingMinutes() int {
-	if q.Status != StatusInProgress || q.StartTime == nil {
+	if q.Status != StatusInProgress || q.StartTime == nil || q.Duration == 0 {
 		return 0
 	}
-	endTime := q.GetEndTime()
-	if endTime == nil {
-		return 0
-	}
-	remaining := time.Until(*endTime).Minutes()
+	endTime := q.StartTime.Add(time.Duration(q.Duration) * time.Minute)
+	remaining := time.Until(endTime).Minutes()
 	if remaining < 0 {
 		return 0
 	}
 	return int(remaining)
+}
+
+// IsTimerExpired checks if the timer has expired
+func (q *QueueItem) IsTimerExpired() bool {
+	return q.GetRemainingMinutes() <= 0
 }
 
 // ShouldAutoRemove checks if completed item should be removed
@@ -111,18 +95,13 @@ func (q *LaundryQueue) backgroundWorker() {
 	}
 }
 
-// generateID creates a unique ID for queue items
-func (q *LaundryQueue) generateID(name string) string {
-	return time.Now().Format("20060102150405") + "-" + name
-}
-
 // AddToQueue adds a new person to the queue
 func (q *LaundryQueue) AddToQueue(name string, numLoads int) *QueueItem {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	item := &QueueItem{
-		ID:       q.generateID(name),
+		ID:       time.Now().Format("20060102150405") + "-" + name,
 		Name:     name,
 		Status:   StatusWaiting,
 		NumLoads: numLoads,
@@ -156,7 +135,7 @@ func (q *LaundryQueue) AddAndStart(name string, duration int, numLoads int) *Que
 
 	now := time.Now()
 	item := &QueueItem{
-		ID:        q.generateID(name),
+		ID:        time.Now().Format("20060102150405") + "-" + name,
 		Name:      name,
 		Status:    StatusInProgress,
 		StartTime: &now,

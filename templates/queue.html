@@ -38,8 +38,8 @@
     {{else if eq .Status "in_progress"}}
         <p class="timer-info">
             Started: {{formatTime .StartTime}}<br>
-            Duration: {{formatDuration .Duration}}<br>
-            <strong>{{getRemainingTime .}}</strong>
+            Duration: {{formatTimeRange .Duration ""}}<br>
+            <strong>{{formatTimeRange .GetRemainingMinutes " remaining"}}</strong>
         </p>
     {{else if eq .Status "completed"}}
         <p class="completed-info">
