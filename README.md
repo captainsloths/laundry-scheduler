@@ -70,15 +70,6 @@ services:
     restart: unless-stopped
 ```
 
-## Container Registry
-
-Images are automatically built and published to GitHub Container Registry:
-
-- **Versioned**: `ghcr.io/captainsloths/laundry-scheduler:v1`, `v2`, `v3`, etc.
-- **Latest**: `ghcr.io/captainsloths/laundry-scheduler:latest` (development only)
-
-**Production Warning**: Always use versioned tags in production. The `latest` tag can change unexpectedly and break your deployment.
-
 ## Configuration
 
 The application runs on port 8080 by default. No additional configuration required!
