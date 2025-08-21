@@ -1,0 +1,38 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+*.exe
+*.dmg
+*.deb
+*.rpm
+
+# Logs
+*.log
+
+# Docker
+Dockerfile
+.dockerignore
+
+# GitHub Actions
+.github/
+
+# Temporary files
+*.tmp
+*.temp
