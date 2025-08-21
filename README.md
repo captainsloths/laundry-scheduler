@@ -7,10 +7,10 @@ Living with shared laundry can be a bit annoying. This application can be shared
 ### Using Docker (Recommended)
 
 ```bash
-# Pull and run the latest version
-docker run -p 8080:8080 ghcr.io/captainsloths/laundry-scheduler:latest
+# Pull and run a specific version (recommended for production)
+docker run -p 8080:8080 ghcr.io/captainsloths/laundry-scheduler:v1
 
-# Or using docker-compose
+# Or using docker-compose with versioned tag
 docker-compose up -d
 ```
 
@@ -54,9 +54,9 @@ docker-compose -f docker-compose.dev.yml up --build
 
 ### Docker
 ```bash
-# Production deployment
+# Production deployment (use specific version)
 docker run -d -p 8080:8080 --name laundry-scheduler \
-  ghcr.io/captainsloths/laundry-scheduler:latest
+  ghcr.io/captainsloths/laundry-scheduler:v1
 ```
 
 ### Docker Compose
@@ -64,7 +64,7 @@ docker run -d -p 8080:8080 --name laundry-scheduler \
 version: '3.8'
 services:
   laundry-scheduler:
-    image: ghcr.io/captainsloths/laundry-scheduler:latest
+    image: ghcr.io/captainsloths/laundry-scheduler:v1  # Use specific version
     ports:
       - "8080:8080"
     restart: unless-stopped
@@ -74,8 +74,10 @@ services:
 
 Images are automatically built and published to GitHub Container Registry:
 
-- **Latest**: `ghcr.io/captainsloths/laundry-scheduler:latest`
-- **Tagged**: `ghcr.io/captainsloths/laundry-scheduler:v1`, `v2`, etc.
+- **Versioned**: `ghcr.io/captainsloths/laundry-scheduler:v1`, `v2`, `v3`, etc.
+- **Latest**: `ghcr.io/captainsloths/laundry-scheduler:latest` (development only)
+
+**⚠️ Production Warning**: Always use versioned tags in production. The `latest` tag can change unexpectedly and break your deployment.
 
 ## 🔧 Configuration
 
