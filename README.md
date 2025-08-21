@@ -1,8 +1,8 @@
-# Laundry Scheduler 🧺
+# Laundry Scheduler
 
 Living with shared laundry can be a bit annoying. This application can be shared with other apartments to keep track of who's currently in the laundry from the comfort of their own couch!
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Using Docker (Recommended)
 
@@ -24,15 +24,15 @@ go run main.go
 docker-compose -f docker-compose.dev.yml up --build
 ```
 
-## ✨ Features
+## Features
 
-- 📱 **Responsive Web Interface** - Works on desktop and mobile
-- 🌙 **Dark/Light Mode Toggle** - Choose your preferred theme
-- ⏰ **Real-time Queue Management** - See who's doing laundry and when
-- 🔄 **Auto-cleanup** - Completed items are automatically removed
-- 🐳 **Docker Support** - Easy deployment with containers
+- **Responsive Web Interface** - Works on desktop and mobile
+- **Dark/Light Mode Toggle** - Choose your preferred theme
+- **Real-time Queue Management** - See who's doing laundry and when
+- **Auto-cleanup** - Completed items are automatically removed
+- **Docker Support** - Easy deployment with containers
 
-## 🛠️ Development
+## Development
 
 ### Prerequisites
 - Go 1.24+
@@ -50,7 +50,7 @@ docker-compose -f docker-compose.dev.yml up --build
 docker-compose -f docker-compose.dev.yml up --build
 ```
 
-## 🚀 Deployment
+## Deployment
 
 ### Docker
 ```bash
@@ -70,16 +70,16 @@ services:
     restart: unless-stopped
 ```
 
-## 📦 Container Registry
+## Container Registry
 
 Images are automatically built and published to GitHub Container Registry:
 
 - **Versioned**: `ghcr.io/captainsloths/laundry-scheduler:v1`, `v2`, `v3`, etc.
 - **Latest**: `ghcr.io/captainsloths/laundry-scheduler:latest` (development only)
 
-**⚠️ Production Warning**: Always use versioned tags in production. The `latest` tag can change unexpectedly and break your deployment.
+**Production Warning**: Always use versioned tags in production. The `latest` tag can change unexpectedly and break your deployment.
 
-## 🔧 Configuration
+## Configuration
 
 The application runs on port 8080 by default. No additional configuration required!
 
